@@ -141,8 +141,10 @@ void main()
 	DDRB  |= (1<<buzzer_pin); // buzzer as output
 
 	LCD_Init(4,2,16);
-	LCD_Printf("Explore Time !");
-	_delay_ms(1000);
+	LCD_Printf(" Explore Time !");
+	_delay_ms(2000);
+	LCD_Clear();
+	
     RTC_Init();
 	
 	//segments for creating large font stored in RAM.
@@ -922,7 +924,7 @@ void setDisplayStyle()
 {	
 	LCD_Clear();
 	LCD_GoToLine(1);
-	LCD_Printf(" Display-Style ");
+	LCD_Printf("  Display-Style ");
 	
 	do 
 	{
@@ -959,11 +961,11 @@ void setDisplayStyle()
 
 		if(Display_Style == 1)
 		{
-			LCD_Printf("  <Time + Date>");
+			LCD_Printf("  <Time + Date>  ");
 		}
 		else
 		{
-			LCD_Printf("   <Only Time>");
+			LCD_Printf("   <Only Time>  ");
 		}		
 	} while (util_IsBitSet(Button, select));
 	
@@ -975,7 +977,8 @@ void setDisplayStyle()
 		}
 	}while(util_IsBitSet(Button, select));	
 	
-	LCD_Printf("Display Style Updated");
+	LCD_GoToLine(1);
+	LCD_Printf("  Display-Style \n    Updated     ");
 	_delay_ms(2000);
 }
 
@@ -1036,7 +1039,8 @@ void setTimeFormat()
 		}
 	}while(util_IsBitSet(Button, select));
 	
-	LCD_Printf("Time Format Updated");
+	LCD_GoToLine(1);
+	LCD_Printf("  Time Format   \n    Updated     ");
 	_delay_ms(2000);
 	
 }
