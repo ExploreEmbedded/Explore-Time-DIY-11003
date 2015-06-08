@@ -159,8 +159,8 @@ void main()
 	LCD_CreateCC(LMB,7);
 
 	/*Set the time and Date only once */
-	RTC_SetTime(0x23,0x40,0x20);  //  11:40:20 pm
-	RTC_SetDate(0x14,0x11,0x12);  //  14th Nov 2012
+//	RTC_SetTime(0x23,0x40,0x20);  //  11:40:20 pm
+//	RTC_SetDate(0x14,0x11,0x12);  //  14th Nov 2012
 	
 	while(1)
 	{		       
@@ -224,13 +224,13 @@ void LCD_DisplayBigNum(uint8_t num, uint8_t pos)
 		
 		case 1:
 		LCD_SetCursor(1,pos);
-		lcd_DataWrite(1);
-		lcd_DataWrite(2);
 		lcd_DataWrite(' ');
-		LCD_SetCursor(2,pos);
 		lcd_DataWrite(' ');
 		lcd_DataWrite(255);
+		LCD_SetCursor(2,pos);
 		lcd_DataWrite(' ');
+		lcd_DataWrite(' ');
+		lcd_DataWrite(255);
 		break;
 		
 		case 2:
