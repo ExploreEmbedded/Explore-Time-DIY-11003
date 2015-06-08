@@ -139,12 +139,10 @@ void main()
 	DDRD = 0XF0; //Switches as input, lcd dataline as output
 	PORTD = 0XFF; //Internal pull up enabled for switches
 	DDRB  |= (1<<buzzer_pin); // buzzer as output
-	util_BitSet(buzzer_port,buzzer_pin);
-	
-//	uint8_t cnt =0;
+
 	LCD_Init(4,2,16);
-	LCD_Printf("Explore Time!");
-	_delay_ms(100);
+	LCD_Printf("Explore Time !");
+	_delay_ms(1000);
     RTC_Init();
 	
 	//segments for creating large font stored in RAM.
