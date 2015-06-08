@@ -10,16 +10,19 @@ void LCD_DisplayDate(uint8_t day, uint8_t month, uint8_t year);
 uint8_t LCD_DisplayMenu(void);
 void setTime(uint8_t hour, uint8_t min, uint8_t sec);
 void setDate(uint8_t day, uint8_t month, uint8_t year);
-void changeTime(void);
-void setAlarm();
-void checkAlarm();
-void setDisplayStyle();
-void setTimeFormat();
+
 
 uint8_t dec2bcd(uint8_t);
 uint8_t bcd2dec(uint8_t);
 
+void changeTime(void);
+//void setAlarm(uint8_t alarm_hour, uint8_t alarm_min, uint8_t alarm_sec);
+void setAlarm();
+//void checkAlarm(uint8_t alarm_hour, uint8_t alarm_min, uint8_t alarm_sec);
+void checkAlarm();
 
+void setDisplayStyle();
+void setTimeFormat();
 
 
 //Segment Patterns for displaying large fonts
@@ -119,7 +122,7 @@ char settings[5][16]={"Time","Date","Alarm","Display Style","Time Format"};
 #define buzzer_port PORTB
 
 uint8_t Display_Style;
-uint8_t Time_Format = 1;	// to make default 12 hour time format
+uint8_t Time_Format;
 
 unsigned char alarm_sec;
 unsigned char alarm_min;
@@ -158,12 +161,14 @@ void main()
 	LCD_CreateCC(UMB,6);
 	LCD_CreateCC(LMB,7);
 
+
 	/*Set the time and Date only once */
-	RTC_SetTime(0x23,0x40,0x20);  //  11:40:20 pm
-	RTC_SetDate(0x14,0x11,0x12);  //  14th Nov 2012
+	//RTC_SetTime(0x12,0x57,0x20);  //  10:40:20 am
+	//RTC_SetDate(0x03,0x03,0x15);  //  14th Nov 2012
 	
 	while(1)
-	{		       
+	{
+		       
 		if(util_IsBitCleared(Button,select))
 		 {   
 			while(util_IsBitCleared(Button,select));
@@ -175,22 +180,28 @@ void main()
 				{
 				 case 0: setTime(hour,min,sec);break;
 				 case 1: setDate(day,month,year);break;
+				// case 2: setAlarm(alarm_hour,alarm_min,alarm_sec); break;
 				 case 2: setAlarm(); break;
 				 case 3: setDisplayStyle(); break;
 				 case 4: setTimeFormat(); break;
 				 default: break;
 				}
 			} while(util_IsBitSet(Button,cancel));
-			
+			 
 			LCD_Clear(); 	 
 		 }
 	
 		RTC_GetTime(&hour,&min,&sec);      
-		RTC_GetDate(&day, &month, &year);
+		RTC_GetDate(&day, &month, &year);// it is only read for updating, not displayed				
+//		LCD_DisplayTime(alarm_hour,alarm_min,alarm_sec);
 		LCD_DisplayTime(hour, min, sec);
 		LCD_DisplayDate(day, month, year);
 		
+		//checkAlarm(alarm_hour,alarm_min,alarm_sec);
 		checkAlarm();
+		
+		//LCD_DisplayString(settings[2]);
+		//LCD_GoToLine(1);
 				
 	}
 
@@ -325,41 +336,51 @@ void LCD_DisplayBigNum(uint8_t num, uint8_t pos)
 
 void LCD_DisplayTime(unsigned char hr,unsigned char min, unsigned char sec)
 {
-	uint8_t d_hour, d_min, d_sec;
+//	float digit0=0, digit1=0, digit2=0;
+//	uint8_t d_hour, d_min, d_sec;
 	uint8_t digit0=0, digit1=0, digit2=0;
 	
-	d_hour = bcd2dec(hr);
-	d_min = bcd2dec(min);
-	d_sec = bcd2dec(sec);
-	
-	if ( Time_Format == 1 )		// 12 hour format
-	{
-		LCD_SetCursor(1,14);
-		
-		if (d_hour >12)
-		{
-			d_hour -= 12;
-			LCD_Printf("PM");	
-		}
-		else
-		{
-			if ( d_hour == 0)	// time is 12 AM
-			{
-				d_hour = 12;
-			}
-			LCD_Printf("AM");
-		}		
-	}	
 		
 	if ( Display_Style == 1)	// both date and time are displayed in this style
-	{		
+	{
+	/*	d_hour = bcd2dec(hr);
+		d_min = bcd2dec(min);
+		d_sec = bcd2dec(sec);
 		LCD_GoToLine(1);
-		LCD_Printf("    %2d:%2d:%2d",d_hour,d_min,d_sec);		
-	}	
+		LCD_Printf("  %2d : %2d : %2d",d_hour,d_min,d_sec);
+	*/	
+		digit0 = bcd2dec(hr);
+		digit1 = bcd2dec(min);
+		digit2 = bcd2dec(sec);
+		LCD_GoToLine(1);
+		
+		if ( Time_Format == 1 )		// 12 hour format
+		{
+			if (digit0 >12)
+			{
+				digit0 -= 12;
+				LCD_Printf("%2d : %2d : %2d PM",digit0,digit1,digit2);	
+			}
+			else
+			{
+				if ( digit0 == 0)	// time is 12 AM
+				{
+					digit0 = 12;
+				}
+				LCD_Printf("%2d : %2d : %2d AM",digit0,digit1,digit2);
+			}
+			
+		}	
+		else		// 24 hour format
+		{
+			LCD_Printf("  %2d : %2d : %2d",digit0,digit1,digit2);
+		}
+	}
+	
 	else		// only date is displayed, so display big numbers
 	{
-		digit1 = d_hour/10;
-		digit0= d_hour%10;
+		digit1 = hr/0x10;
+		digit0= hr%0x10;
 		LCD_DisplayBigNum(digit1,0);  //display hour
 		LCD_DisplayBigNum(digit0,3);
 		
@@ -370,15 +391,18 @@ void LCD_DisplayTime(unsigned char hr,unsigned char min, unsigned char sec)
 		lcd_DataWrite(0xA5);
 		  
 		//display min  
-		digit1 = d_min/10;
-		digit0= d_min%10;
+		digit1 = min/0x10;
+		digit0= min%0x10;
 		LCD_DisplayBigNum(digit1,7);  
 		LCD_DisplayBigNum(digit0,10);
 		
 		//display sec
-		LCD_SetCursor(2,14);
-		LCD_Printf("%2x",sec);	
-	}	
+		// LCD_SetCursor(1,14);
+		//LCD_DisplayString("pm");
+		 LCD_SetCursor(2,14);
+		 LCD_Printf("%2x",sec);	
+	}
+	
 }
 
 void LCD_DisplayDate(uint8_t day, uint8_t month, uint8_t year)
@@ -391,7 +415,7 @@ void LCD_DisplayDate(uint8_t day, uint8_t month, uint8_t year)
 		digit0 = bcd2dec(day);
 		digit1 = bcd2dec(month);
 		digit2 = bcd2dec(year);
-		LCD_Printf("    %2d/%2d/%2d",digit0,digit1,digit2);
+		LCD_Printf(" %2d / %2d / %4d",digit0,digit1,digit2);
 	}
 }
 
@@ -405,7 +429,7 @@ uint8_t LCD_DisplayMenu()
 	{       
 		if (util_IsBitCleared(Button, cancel))
 		{
-		   return (-1); 
+		   return (-1); ; 
 		}
 		
 		if(util_IsBitCleared(Button, up))
@@ -427,8 +451,7 @@ uint8_t LCD_DisplayMenu()
 		
 		if(keycount<0)
 		{
-			//make menu index circular. i.e decrement from first 
-			//option shows the last option on the menu
+			//make menu index circular. i.e decrement from first option shows the last option on the menu
 			keycount += menusize;   
 		}			
 		
@@ -449,12 +472,15 @@ uint8_t LCD_DisplayMenu()
 		}
 	}while(util_IsBitSet(Button, select));
 	
+//	while(util_IsBitCleared(Button, select));	//wait till button is released. 
+	  
 	return (keycount); 
 }
 
 void setTime(uint8_t hour, uint8_t min, uint8_t sec)
 {  
 	uint8_t d_hour, d_min, d_sec;
+//	uint8_t cnt=0;
 	
 	d_hour = bcd2dec(hour);
 	d_min = bcd2dec(min);
@@ -472,30 +498,18 @@ void setTime(uint8_t hour, uint8_t min, uint8_t sec)
 		
 		if (util_IsBitCleared(Button, cancel))
 		{
-//		   _delay_ms(1);
-//			if (util_IsBitSet(Button, cancel))
-			{
-				return (-1);  
-			}
+		   return (-1); ; 
 		}
 
 		if(util_IsBitCleared(Button, up))
 		{
-//			_delay_ms(1);
-//			if (util_IsBitSet(Button, up))
-			{
-				d_hour++;
-				_delay_ms(200);
-			}
+			d_hour++;
+			_delay_ms(200);
 		}
 		if(util_IsBitCleared(Button, down))
 		{
-//			_delay_ms(1);
-//			if (util_IsBitSet(Button, down))
-			{
-				d_hour--;
-				_delay_ms(200);
-			}
+			d_hour--;
+			_delay_ms(200);
 		}
 		
 		if(d_hour>=24)
@@ -511,15 +525,14 @@ void setTime(uint8_t hour, uint8_t min, uint8_t sec)
 	{
 		if (util_IsBitCleared(Button, cancel))
 		{
-//		   _delay_ms(1);
-//			if (util_IsBitSet(Button, cancel))
-			{
-				return (-1); 
-			}
+		   return (-1); ; 
 		}
 	}while(util_IsBitSet(Button, select));
+	
+//	while(util_IsBitCleared(Button, select));
 		  
 		//update min  
+	
 	do 
 	{
 		LCD_SetCursor(2,7);
@@ -527,30 +540,18 @@ void setTime(uint8_t hour, uint8_t min, uint8_t sec)
 		
 		if (util_IsBitCleared(Button, cancel))
 		{
-//		   _delay_ms(1);
-//			if (util_IsBitSet(Button, cancel))
-			{
-				return (-1);  
-			}
+		   return (-1); ; 
 		}
 
 		if(util_IsBitCleared(Button, up))
 		{
-//			_delay_ms(1);
-//			if (util_IsBitSet(Button, up))
-			{
-				d_min++;
-				_delay_ms(200);
-			}
+			d_min++;
+			_delay_ms(200);
 		}
 		if(util_IsBitCleared(Button, down))
 		{
-//			_delay_ms(1);
-//			if (util_IsBitSet(Button, down))
-			{
-				d_min--;
-				_delay_ms(200);
-			}
+			d_min--;
+			_delay_ms(200);
 		}
 			
 		if(d_min>=60)
@@ -567,16 +568,15 @@ void setTime(uint8_t hour, uint8_t min, uint8_t sec)
 	{
 		if (util_IsBitCleared(Button, cancel))
 		{
-//		   _delay_ms(1);
-//			if (util_IsBitSet(Button, cancel))
-			{
-				return (-1); 
-			}
+		   return (-1); ; 
 		}
 	}while(util_IsBitSet(Button, select));
+	
+//	while(util_IsBitCleared(Button, select));
 				
 	do 
 	{
+
 		LCD_SetCursor(2,12);
 		_delay_ms(100);
 		
@@ -611,7 +611,9 @@ void setTime(uint8_t hour, uint8_t min, uint8_t sec)
 		{
 		   return (-1); ; 
 		}
-	}while(util_IsBitSet(Button, select));
+	}while(util_IsBitSet(Button, select));	
+	
+//	while(util_IsBitCleared(Button, select));
 		
 	hour = dec2bcd(d_hour);
 	min = dec2bcd(d_min);
@@ -619,13 +621,14 @@ void setTime(uint8_t hour, uint8_t min, uint8_t sec)
 	RTC_SetTime(hour, min, sec); 
 	LCD_Clear();
 	LCD_DisplayString("Time Updated");
-	_delay_ms(2000);
+	_delay_ms(200);
 	  
 }
 
 void setDate(uint8_t day, uint8_t month, uint8_t year)
 {  
 	uint8_t d_day, d_month, d_year;
+//	uint8_t cnt=0;
 	
 	d_day = bcd2dec(day);
 	d_month = bcd2dec(month);
@@ -673,6 +676,8 @@ void setDate(uint8_t day, uint8_t month, uint8_t year)
 		   return (-1); ; 
 		}
 	}while(util_IsBitSet(Button, select));
+	
+//	while(util_IsBitCleared(Button, select));
 	  
 	//update month
 	do 
@@ -701,7 +706,9 @@ void setDate(uint8_t day, uint8_t month, uint8_t year)
 			d_month=0;
 		}
 			
-		LCD_Printf("%2d",d_month);			
+		LCD_Printf("%2d",d_month);
+			
+			
 	} while (util_IsBitSet(Button, select));
 		
 	do 
@@ -711,6 +718,8 @@ void setDate(uint8_t day, uint8_t month, uint8_t year)
 		   return (-1); ; 
 		}
 	}while(util_IsBitSet(Button, select));
+	
+//	while(util_IsBitCleared(Button, select));
 		
 	//set year	
 	do 
@@ -751,20 +760,24 @@ void setDate(uint8_t day, uint8_t month, uint8_t year)
 		}
 	}while(util_IsBitSet(Button, select));
 	
+//	while(util_IsBitCleared(Button, select));
+	
    day = dec2bcd(d_day);
    month = dec2bcd(d_month);
    year = dec2bcd(d_year);
    RTC_SetDate(day, month, year); 
    LCD_Clear();
    LCD_DisplayString("Date Updated");
-   _delay_ms(2000);
+   _delay_ms(200);
 	  
 }
 
+//void setAlarm(uint8_t alarm_hour, uint8_t alarm_min, uint8_t alarm_sec)
 void setAlarm()
 {
  
 	uint8_t d_hour, d_min, d_sec;
+//	uint8_t cnt=0;
 	
 	d_hour = bcd2dec(alarm_hour);
 	d_min = bcd2dec(alarm_min);
@@ -813,7 +826,10 @@ void setAlarm()
 		}
 	}while(util_IsBitSet(Button, select));
 	
-	//update min  	
+//	while(util_IsBitCleared(Button, select));
+		  
+		//update min  
+	
 	do 
 	{
 		LCD_SetCursor(2,7);
@@ -841,7 +857,8 @@ void setAlarm()
 		}
 			
 		LCD_Printf("%2d",d_min);
-						
+			
+			
 	} while (util_IsBitSet(Button, select));
 		
 	do 
@@ -851,9 +868,12 @@ void setAlarm()
 		   return (-1); ; 
 		}
 	}while(util_IsBitSet(Button, select));
-					
+	
+//	while(util_IsBitCleared(Button, select));
+				
 	do 
 	{
+
 		LCD_SetCursor(2,12);
 		_delay_ms(100);
 		
@@ -889,46 +909,59 @@ void setAlarm()
 		   return (-1); ; 
 		}
 	}while(util_IsBitSet(Button, select));	
+	
+//	while(util_IsBitCleared(Button, select));
 		
 	alarm_hour = dec2bcd(d_hour);
 	alarm_min = dec2bcd(d_min);
 	alarm_sec = dec2bcd(d_sec);
 	LCD_Clear();
 	LCD_DisplayString("Alarm Set");
-	_delay_ms(2000);
+	_delay_ms(200);
    
 }
 
+//void checkAlarm(uint8_t alarm_hour, uint8_t alarm_min, uint8_t alarm_sec)
 void checkAlarm()
 {
 	uint8_t b_hour, b_min, b_sec;
+//	uint8_t cnt=0;
 
 	RTC_GetTime(&b_hour,&b_min,&b_sec);
 	
 	if ( (alarm_hour == b_hour) & ( alarm_min == b_min) & ( alarm_sec == b_sec) ) 
 	{
-		LCD_Clear();
 		do
-		{		
+		{
+			LCD_Clear();
 			LCD_GoToLine(1);
-			LCD_Printf("Press Cancel to Stop Alarm");
+			LCD_Printf("Press Cancel to stop alarm");
 		}while(util_IsBitSet(Button, cancel));
 		
 		util_BitClear(buzzer_port,buzzer_pin);
-		LCD_Clear();
-	}				
+	}
+		
+		
 }
 
 
 void setDisplayStyle()
-{	
-	LCD_Clear();
-	LCD_GoToLine(1);
-	LCD_Printf(" Display-Style ");
+{
 	
-	do 
+	LCD_Clear();
+	
+/*	if(Display_Style == 1)
 	{
-		LCD_GoToLine(2);
+		LCD_Printf("Time and Date");
+	}
+	else
+	{
+		LCD_Printf("Only Time      ");
+	}
+	
+*/	do 
+	{
+		LCD_GoToLine(1);
 		_delay_ms(100);
 		
 		if (util_IsBitCleared(Button, cancel))
@@ -939,33 +972,28 @@ void setDisplayStyle()
 		if(util_IsBitCleared(Button, up))
 		{
 			Display_Style++;
+		//	LCD_Printf("Time and Date");
 			_delay_ms(200);
 		}
 		if(util_IsBitCleared(Button, down))
 		{
 			Display_Style--;
+		//	LCD_Printf("Only Time ");
 			_delay_ms(200);
 		}
 			
-		if((Display_Style >= 2)||(Display_Style <= -2))
+		if(Display_Style>=2)
 		{
-			Display_Style = 0;
-		}
-		
-		if(Display_Style < 0)
-		{
-			//make menu index circular. i.e decrement from first 
-			//option shows the last option on the menu
-			Display_Style += 2;   
-		}	
+			Display_Style=0;
+		}		
 
 		if(Display_Style == 1)
 		{
-			LCD_Printf("  <Time + Date>");
+			LCD_Printf("Time and Date");
 		}
 		else
 		{
-			LCD_Printf("   <Only Time>");
+			LCD_Printf("Only Time     ");
 		}		
 	} while (util_IsBitSet(Button, select));
 	
@@ -977,19 +1005,16 @@ void setDisplayStyle()
 		}
 	}while(util_IsBitSet(Button, select));	
 	
-	LCD_Printf("Display Style Updated");
-	_delay_ms(2000);
 }
 
 
 void setTimeFormat()
 {
 	LCD_Clear();
-	LCD_GoToLine(1);
-	LCD_Printf("  Time Format   ");
+	
 	do 
 	{
-		LCD_GoToLine(2);
+		LCD_GoToLine(1);
 		_delay_ms(100);
 		
 		if (util_IsBitCleared(Button, cancel))
@@ -1005,28 +1030,22 @@ void setTimeFormat()
 		if(util_IsBitCleared(Button, down))
 		{
 			Time_Format--;
+		//	LCD_Printf("Only Time ");
 			_delay_ms(200);
 		}
 			
-		if((Time_Format >= 2)||(Time_Format <= -2))
+		if(Time_Format>=2)
 		{
-			Time_Format = 0;
-		}
-		
-		if(Time_Format < 0)
-		{
-			//make menu index circular. i.e decrement from first 
-			//option shows the last option on the menu
-			Time_Format += 2;   
+			Time_Format=0;
 		}		
 
 		if( Time_Format == 1 )
 		{
-			LCD_Printf("   <12 Hours>   ");
+			LCD_Printf("12 Hour Format");
 		}
 		else
 		{
-			LCD_Printf("   <24 Hours>   ");
+			LCD_Printf("24 Hour Format");
 		}		
 	} while (util_IsBitSet(Button, select));
 	
@@ -1037,10 +1056,6 @@ void setTimeFormat()
 		   return (-1); ; 
 		}
 	}while(util_IsBitSet(Button, select));
-	
-	LCD_Printf("Time Format Updated");
-	_delay_ms(2000);
-	
 }
 
 // Convert Decimal to Binary Coded Decimal (BCD)
